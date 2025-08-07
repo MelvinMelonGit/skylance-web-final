@@ -46,6 +46,8 @@ jobs:
         username: ${{ secrets.DROPLET_USER }}
         key: ${{ secrets.DROPLET_SSH_KEY }}
         script: |
+          sudo fuser -k 80/tcp || true
+
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/skylance-frontend-final:latest
           docker stop skylance-frontend || true
           docker rm skylance-frontend || true
