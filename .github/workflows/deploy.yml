@@ -46,6 +46,9 @@ jobs:
         username: ${{ secrets.DROPLET_USER }}
         key: ${{ secrets.DROPLET_SSH_KEY }}
         script: |
+          # Kill anything using port 80
+          sudo lsof -ti:80 | xargs --no-run-if-empty sudo kill -9
+          
           # Stop/remove old container
           docker stop skylance-frontend || true
           docker rm skylance-frontend || true
