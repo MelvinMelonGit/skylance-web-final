@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Search,
@@ -8,8 +8,6 @@ import {
   Clock,
 } from "lucide-react";
 
-
-
 const OpenCheckInPassengerDetailView = ({
   selectedFlight,
   onBackToDashboard,
@@ -18,125 +16,45 @@ const OpenCheckInPassengerDetailView = ({
   const [filterPriority, setFilterPriority] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const getPassengerData = (flightId) => {
-    return [
-      {
-        id: 1,
-        name: "John Smith",
-        seat: "12A",
-        status: "checked-in",
-        priority: "Gold",
-        bookingTime: "2024-01-15",
-        checkInTime: "2024-01-25 06:30",
-        boardingGroup: "A",
-        specialRequests: "Wheelchair",
-      },
-      {
-        id: 2,
-        name: "Sarah Johnson",
-        seat: "15C",
-        status: "no-show",
-        priority: "Silver",
-        bookingTime: "2024-01-10",
-        checkInTime: null,
-        boardingGroup: "B",
-        specialRequests: "None",
-      },
-      {
-        id: 3,
-        name: "Mike Wilson",
-        seat: "8B",
-        status: "checked-in",
-        priority: "Platinum",
-        bookingTime: "2024-01-08",
-        checkInTime: "2024-01-25 05:45",
-        boardingGroup: "A",
-        specialRequests: "Extra Legroom",
-      },
-      {
-        id: 4,
-        name: "Emily Davis",
-        seat: "22F",
-        status: "checked-in",
-        priority: "Basic",
-        bookingTime: "2024-01-20",
-        checkInTime: "2024-01-25 07:15",
-        boardingGroup: "C",
-        specialRequests: "Vegetarian Meal",
-      },
-      {
-        id: 5,
-        name: "Robert Brown",
-        seat: "5A",
-        status: "checked-in",
-        priority: "Gold",
-        bookingTime: "2024-01-12",
-        checkInTime: "2024-01-25 06:00",
-        boardingGroup: "A",
-        specialRequests: "None",
-      },
-      {
-        id: 6,
-        name: "Lisa Garcia",
-        seat: "18D",
-        status: "no-show",
-        priority: "Basic",
-        bookingTime: "2024-01-18",
-        checkInTime: null,
-        boardingGroup: "C",
-        specialRequests: "Child Meal",
-      },
-      {
-        id: 7,
-        name: "David Martinez",
-        seat: "11E",
-        status: "no-show",
-        priority: "Silver",
-        bookingTime: "2024-01-22",
-        checkInTime: null,
-        boardingGroup: "B",
-        specialRequests: "None",
-      },
-      {
-        id: 8,
-        name: "Jennifer Lee",
-        seat: "7C",
-        status: "checked-in",
-        priority: "Platinum",
-        bookingTime: "2024-01-05",
-        checkInTime: "2024-01-25 05:30",
-        boardingGroup: "A",
-        specialRequests: "Priority Boarding",
-      },
-    ];
-  };
+  const [passengers, setPassengers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(5);
+  const [totalPassengers, setTotalPassengers] = useState(0);
 
-  const getPrediction = (passenger) => {
-    // Simulate logic: lower priority and late booking = likely no-show
-    const isLateBooking =
-      new Date(passenger.bookingTime) > new Date("2024-01-15");
-
-    if (
-      passenger.status === "no-show" ||
-      (passenger.priority === "Basic" && isLateBooking)
-    ) {
-      return {
-        label: "Likely No Show",
-        color: "bg-red-100 text-red-700",
-      };
-    }
-
-    return {
-      label: "Likely to Show",
-      color: "bg-green-100 text-green-700",
+  useEffect(() => {
+    const fetchPassengers = async () => {
+      if (!selectedFlight?.flightid) return;
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/${
+            selectedFlight.flightid
+          }/passengers?page=${page}&pageSize=${pageSize}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch passengers");
+        const data = await response.json();
+        setPassengers(data.passengers || []);
+        setTotalPassengers(data.totalPassengers || 0);
+      } catch (error) {
+        console.error("Error fetching passengers:", error);
+        setPassengers([]);
+        setTotalPassengers(0);
+      } finally {
+        setLoading(false);
+      }
     };
-  };
+
+    fetchPassengers();
+  }, [selectedFlight?.flightid, page, pageSize]);
 
   const getPassengerStatusIcon = (status) => {
-    switch (status) {
+    switch ((status || "").toLowerCase()) {
       case "checked-in":
+      case "checkedin":
         return <CheckCircle className="text-green-600" size={16} />;
       case "no-show":
+      case "noshow":
         return <XCircle className="text-red-600" size={16} />;
       case "standby":
         return <Clock className="text-amber-600" size={16} />;
@@ -146,47 +64,39 @@ const OpenCheckInPassengerDetailView = ({
   };
 
   const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "Platinum":
+    switch ((priority || "").toLowerCase()) {
+      case "platinum":
         return "bg-purple-100 text-purple-800";
-      case "Gold":
+      case "gold":
         return "bg-amber-100 text-amber-800";
-      case "Silver":
+      case "silver":
         return "bg-gray-100 text-gray-600";
       default:
         return "bg-blue-100 text-blue-800";
     }
   };
 
-  const passengers = getPassengerData(selectedFlight?.id || "");
-
   const filteredPassengers = passengers.filter((passenger) => {
+    const passengerStatus = (passenger.bookingStatus || "").toLowerCase();
+    const passengerPriority = (passenger.membershipTier || "").toLowerCase();
+    const searchTermLower = searchTerm.toLowerCase();
+
     const matchesStatus =
-      filterStatus === "all" || passenger.status === filterStatus;
+      filterStatus === "all" || passengerStatus === filterStatus;
     const matchesPriority =
-      filterPriority === "all" || passenger.priority === filterPriority;
+      filterPriority === "all" || passengerPriority === filterPriority;
     const matchesSearch =
-      passenger.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      passenger.seat.toLowerCase().includes(searchTerm.toLowerCase());
+      (passenger.passengerName || "").toLowerCase().includes(searchTermLower) ||
+      (passenger.seatNumber || "").toLowerCase().includes(searchTermLower);
 
     return matchesStatus && matchesPriority && matchesSearch;
   });
 
+  const totalPages = Math.ceil(totalPassengers / pageSize);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Back to Dashboard Button */}
-        {/* <div className="mb-6">
-          <button
-            onClick={onBackToDashboard}
-            className="flex items-center space-x-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-          >
-            <ArrowLeft size={20} />
-            <span className="font-medium">Back to Dashboard</span>
-          </button>
-        </div> */}
-
-        {/* Header */}
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -200,16 +110,9 @@ const OpenCheckInPassengerDetailView = ({
               </button>
               <div className="h-6 w-px bg-gray-300"></div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {selectedFlight?.id} - Passenger Details
+                {selectedFlight?.flightid} - Passenger Details
               </h1>
-              <p className="text-lg text-gray-600">
-                {selectedFlight?.departure} → {selectedFlight?.arrival}
-              </p>
-              {/* <p className="text-lg font-semibold">{selectedFlight?.time}</p> */}
             </div>
-            {/* <div className="text-right">
-             
-            </div> */}
           </div>
 
           {/* Flight Stats */}
@@ -234,7 +137,8 @@ const OpenCheckInPassengerDetailView = ({
             </div>
             <div className="text-center p-3 bg-red-50 rounded-xl">
               <p className="text-2xl font-bold text-red-600">
-                {selectedFlight?.noShows}
+                {(selectedFlight?.booked || 0) -
+                  (selectedFlight?.checkedIn || 0)}
               </p>
               <p className="text-sm text-gray-600">No Shows</p>
             </div>
@@ -262,10 +166,12 @@ const OpenCheckInPassengerDetailView = ({
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All Status</option>
-                <option value="checked-in">Checked In</option>
-                <option value="no-show">No Show</option>
-                <option value="standby">Standby</option>
+                <option value="all">Booking Status</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="checkedin">Checked In</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="rebooked">Rebooked</option>
+                <option value="noshow">No Show</option>
               </select>
             </div>
 
@@ -275,16 +181,18 @@ const OpenCheckInPassengerDetailView = ({
                 onChange={(e) => setFilterPriority(e.target.value)}
                 className="border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="all">All Priority</option>
-                <option value="Platinum">Platinum</option>
-                <option value="Gold">Gold</option>
-                <option value="Silver">Silver</option>
-                <option value="Basic">Basic</option>
+                <option value="all">Priority</option>
+                <option value="regular">Regular</option>
+                <option value="bronze">Bronze</option>
+                <option value="silver">Silver</option>
+                <option value="gold">Gold</option>
+                <option value="platinum">Platinum</option>
+                <option value="normal">Normal</option>
               </select>
             </div>
 
             <div className="ml-auto text-sm text-gray-600">
-              Showing {filteredPassengers.length} of {passengers.length}{" "}
+              Showing {filteredPassengers.length} of {totalPassengers}{" "}
               passengers
             </div>
           </div>
@@ -303,17 +211,16 @@ const OpenCheckInPassengerDetailView = ({
                     Seat
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                    Status
+                    Booking Status
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
                     Priority
                   </th>
-
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
                     Booking Date
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                    Check-in Time
+                    Check-in Status
                   </th>
                   <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
                     Prediction
@@ -324,57 +231,108 @@ const OpenCheckInPassengerDetailView = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredPassengers.map((passenger) => (
-                  <tr key={passenger.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">
-                        {passenger.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {passenger.seat}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        {getPassengerStatusIcon(passenger.status)}
-                        <span className="text-sm text-gray-600 capitalize">
-                          {passenger.status.replace("-", " ")}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                          passenger.priority
-                        )}`}
-                      >
-                        {passenger.priority}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {passenger.bookingTime}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {passenger.checkInTime || "Not checked in"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          getPrediction(passenger).color
-                        }`}
-                      >
-                        {getPrediction(passenger).label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {passenger.specialRequests}
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-6 text-gray-500">
+                      Loading passengers...
                     </td>
                   </tr>
-                ))}
+                ) : filteredPassengers.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-6 text-gray-500">
+                      No passengers found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPassengers.map((passenger) => (
+                    <tr
+                      key={passenger.passengerId || passenger.passengerName}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-4 font-medium text-gray-900">
+                        {passenger.passengerName || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {passenger.seatNumber || "N/A"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          {getPassengerStatusIcon(passenger.bookingStatus)}
+                          <span className="text-sm text-gray-600 capitalize">
+                            {(passenger.bookingStatus || "unknown").replace(
+                              /-/g,
+                              " "
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                            passenger.membershipTier
+                          )}`}
+                        >
+                          {passenger.membershipTier || "N/A"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {passenger.bookingDate &&
+                        passenger.bookingDate !== "0001-01-01T00:00:00"
+                          ? new Date(passenger.bookingDate).toLocaleDateString()
+                          : "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {passenger.checkinTime || "Not checked in"}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium">
+                          {passenger.prediction || "No Prediction"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {passenger.specialRequests || ""}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t border-gray-200 flex justify-end items-center space-x-4">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className={`px-4 py-2 rounded-lg transition-colors duration-200 
+        ${
+          page === 1
+            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+            : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700"
+        }`}
+              >
+                Previous
+              </button>
+
+              <span className="text-sm text-gray-600">
+                Page {page} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className={`px-4 py-2 rounded-lg transition-colors duration-200
+        ${
+          page === totalPages
+            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+            : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700"
+        }`}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

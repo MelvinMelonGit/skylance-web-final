@@ -1,24 +1,8 @@
-import React, { useState } from "react";
-import {
-  Search,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Plane,
-  Eye,
-  Filter,
-  ArrowLeft,
-  Mail,
-  Phone,
-  FileText,
-  MapPin,
-  User,
-  Luggage,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, CheckCircle, XCircle, Plane, Eye, Filter } from "lucide-react";
 
 import getMembershipColor from "./GetMembershipColor";
 import getStatusIcon from "./GetStatusIcon";
-
 import getStatusColor from "./GetStatusColor";
 
 import PassengerRegistryDetailView from "./PassengerRegistryDetailView";
@@ -30,7 +14,6 @@ const PassengerRegistryView = () => {
   const [selectedPassenger, setSelectedPassenger] = useState(null);
   const recordsPerPage = 10;
 
-  // Filter states
   const [filters, setFilters] = useState({
     passengerName: "",
     dateOfTravel: "",
@@ -40,52 +23,40 @@ const PassengerRegistryView = () => {
     membershipTier: "",
   });
 
-  const passengers = [
-    {
-      id: "PX-A23456",
-      flightNumber: "AW101",
-      airlineName: "SkyWings Airlines",
-      passengerName: "Sarah Johnson",
-      class: "Business",
-      membershipTier: "Gold",
-      dateOfTravel: "2025-07-09",
-      bookingStatus: "Confirmed",
-      weightAllowed: "30kg",
-      weightCarried: "25kg",
-      seatNumber: "12A",
-      checkinStatus: "Checked In",
-      // Additional details for detailed view
-      pnr: "ABC123XYZ",
-      email: "sarah.johnson@email.com",
-      phoneNumber: "+1-555-0123",
-      passportNumber: "A12345678",
-      departureCity: "New York (JFK)",
-      arrivalCity: "London (LHR)",
-      specialRequests: "Vegetarian meal, Wheelchair assistance",
-    },
-    {
-      id: "OW-MNT785",
-      flightNumber: "AX801",
-      airlineName: "Blue Sky Airways",
-      passengerName: "Michael Chen",
-      class: "Economy",
-      membershipTier: "Regular",
-      dateOfTravel: "2025-07-10",
-      bookingStatus: "Pending",
-      weightAllowed: "20kg",
-      weightCarried: "18kg",
-      seatNumber: "7F",
-      checkinStatus: "Not Checked",
-      // Additional details for detailed view
-      pnr: "DEF456UVW",
-      email: "michael.chen@email.com",
-      phoneNumber: "+1-555-0456",
-      passportNumber: "B87654321",
-      departureCity: "Los Angeles (LAX)",
-      arrivalCity: "Tokyo (NRT)",
-      specialRequests: "No special requests",
-    },
-  ];
+  const [passengers, setPassengers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPassengers = async () => {
+      try {
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_BASE_URL
+          }/allpassengers?page=${currentPage}&pageSize=${recordsPerPage}`
+        );
+
+        if (!response.ok) {
+          const text = await response.text(); // read body as text to see internal server error
+          console.error("HTTP error:", response.success, text);
+          return;
+        }
+        const result = await response.json();
+        console.log("Full JSON response:", result);
+        console.log("adf", result.success);
+        if (result.success) {
+          setPassengers(result.data);
+        } else {
+          console.error("Error fetching passengers:", result.message);
+        }
+      } catch (error) {
+        console.error("Error fetching passengers:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPassengers();
+  }, [currentPage]);
 
   const handleFilterChange = (filterName, value) => {
     setFilters((prev) => ({
@@ -146,9 +117,22 @@ const PassengerRegistryView = () => {
     setSelectedPassenger(passenger);
   };
 
+  const handleBackToList = () => {
+    setSelectedPassenger(null);
+  };
+
   // If a passenger is selected, show the detailed view
   if (selectedPassenger) {
-    return <PassengerRegistryDetailView passenger={selectedPassenger} />;
+    return (
+      <PassengerRegistryDetailView
+        passenger={selectedPassenger}
+        onBack={handleBackToList}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <div className="text-center p-4">Loading passengers...</div>;
   }
 
   // Main List View
@@ -226,8 +210,8 @@ const PassengerRegistryView = () => {
                   }
                 >
                   <option value="">All</option>
-                  <option value="Checked In">Checked In</option>
-                  <option value="Not Checked">Not Checked</option>
+                  <option value="Checked-In">Checked In</option>
+                  <option value="Not Checked-In">Not Checked In</option>
                 </select>
               </div>
 
@@ -260,8 +244,10 @@ const PassengerRegistryView = () => {
                 >
                   <option value="">All</option>
                   <option value="Confirmed">Confirmed</option>
-                  <option value="Pending">Pending</option>
+                  <option value="checkedIn">checkedIn</option>
                   <option value="Cancelled">Cancelled</option>
+                  <option value="Rebooked">Rebooked</option>
+                  <option value="NoShow">NoShow</option>
                 </select>
               </div>
 
@@ -289,7 +275,7 @@ const PassengerRegistryView = () => {
             <div className="mt-4 flex justify-end">
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 text-sm text-gray-600 bg-gray-200 rounded-lg hover:bg-gray-300"
+                className="px-4 py-2 text-sm font-semibold text-white rounded-lg bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 hover:from-purple-700 hover:via-purple-800 hover:to-purple-900 transition-colors"
               >
                 Clear All Filters
               </button>
@@ -300,17 +286,16 @@ const PassengerRegistryView = () => {
 
       {/* Table Header */}
       <div className="px-6 py-3 bg-gray-100 border-b">
-        <div className="grid grid-cols-10 gap-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-          <div className="col-span-1">Passenger Name</div>
-          <div className="col-span-1">Passenger Id</div>
-          <div className="col-span-1">Flight Num</div>
-          <div className="col-span-1">Airline</div>
-          <div className="col-span-1">Class</div>
-          <div className="col-span-1">Membership</div>
-          <div className="col-span-1">Travel Date</div>
-          <div className="col-span-1">Booking Status</div>
-          <div className="col-span-1">Check-in Status</div>
-          <div className="col-span-1">Action</div>
+        <div className="grid grid-cols-9 gap-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <div className="col-span-1 break-words">Passenger Name</div>
+          <div className="col-span-1 break-words">Flight Num</div>
+          <div className="col-span-1 break-words">Airline</div>
+          <div className="col-span-1 ">Class</div>
+          <div className="col-span-1 break-words">Membership</div>
+          <div className="col-span-1 break-words">Travel Date</div>
+          <div className="col-span-1 break-words">Booking Status</div>
+          <div className="col-span-1 break-words">Check-in Status</div>
+          <div className="col-span-1 break-words">Action</div>
         </div>
       </div>
 
@@ -321,25 +306,16 @@ const PassengerRegistryView = () => {
             key={passenger.id}
             className="px-6 py-4 border-b border-gray-100 hover:bg-gray-50"
           >
-            <div className="grid grid-cols-10 gap-4 items-center text-sm">
+            <div className="grid grid-cols-9 gap-4 items-center text-sm">
               {/* Passenger Name */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <div className="font-semibold text-gray-900">
                   {passenger.passengerName}
-                </div>
-                {/* <div className="text-xs text-gray-500">
-                  Seat: {passenger.seatNumber}
-                </div> */}
-              </div>
-
-              <div className="col-span-1">
-                <div className="font-semibold text-gray-900">
-                  {passenger.id}
                 </div>
               </div>
 
               {/* Flight No. */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <div className="font-semibold text-purple-600 flex items-center space-x-1">
                   <Plane className="w-3 h-3" />
                   <span>{passenger.flightNumber}</span>
@@ -347,9 +323,9 @@ const PassengerRegistryView = () => {
               </div>
 
               {/* Airline */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <div className="text-gray-900 font-medium">
-                  {passenger.airlineName}
+                  {passenger.airline}
                 </div>
               </div>
 
@@ -361,7 +337,7 @@ const PassengerRegistryView = () => {
               </div>
 
               {/* Membership */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <div
                   className={`text-xs font-semibold ${getMembershipColor(
                     passenger.membershipTier
@@ -372,14 +348,14 @@ const PassengerRegistryView = () => {
               </div>
 
               {/* Travel Date */}
-              <div className="col-span-1">
-                <div className="text-gray-900 font-medium">
-                  {passenger.dateOfTravel}
-                </div>
-              </div>
+              <div className="col-span-1 break-words">
+  <div className="text-gray-900 font-medium">
+    {passenger.dateOfTravel ? passenger.dateOfTravel.split("T")[0] : ""}
+  </div>
+</div>
 
               {/* Booking Status */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <span
                   className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
                     passenger.bookingStatus
@@ -391,7 +367,7 @@ const PassengerRegistryView = () => {
               </div>
 
               {/* Check-in Status */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <div
                   className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
                     passenger.checkinStatus === "Checked In"
@@ -414,8 +390,9 @@ const PassengerRegistryView = () => {
               </div>
 
               {/* View Details Button */}
-              <div className="col-span-1">
+              <div className="col-span-1 break-words">
                 <button
+                  key={passenger.passengerId}
                   onClick={() => handleViewDetails(passenger)}
                   className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
                 >
