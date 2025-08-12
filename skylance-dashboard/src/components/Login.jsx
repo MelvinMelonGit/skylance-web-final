@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AirlineImage from "./AirlineImage.jpg";
+import AirlineImage from "./airlineImage.jpg";
 
 const Login = ({ setIsAuthenticated }) => {
   const [employeeNumber, setEmployeeNumber] = useState("");
