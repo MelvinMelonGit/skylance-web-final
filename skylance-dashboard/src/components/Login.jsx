@@ -53,7 +53,6 @@ const Login = ({ setIsAuthenticated }) => {
   return (
     <div className="flex h-screen w-screen">
       {/* Left Login Panel */}
-      {import.meta.env.VITE_API_BASE_URL}
       <div className="w-1/2 flex flex-col justify-center items-center bg-white px-12">
         <div className="w-full max-w-md">
           <h2 className="text-4xl font-bold text-blue-600 mb-2">Skylance</h2>
@@ -82,11 +81,11 @@ const Login = ({ setIsAuthenticated }) => {
               <div className="text-red-600 text-sm mt-1">{errorMessage}</div>
             )}
 
-            <div className="text-right">
+            {/* <div className="text-right">
               <a href="#" className="text-sm text-blue-600 hover:underline">
                 Forgot Password?
               </a>
-            </div>
+            </div> */}
 
             <button
               type="submit"
