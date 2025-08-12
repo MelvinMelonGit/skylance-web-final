@@ -14,11 +14,11 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
 
-    - name: Debug npm build
-      working-directory: ./skylance-dashboard
-      run: |
-        npm install
-        npm run build
+    # - name: Debug npm build
+    #   working-directory: ./skylance-dashboard
+    #   run: |
+    #     npm install
+    #     npm run build
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
