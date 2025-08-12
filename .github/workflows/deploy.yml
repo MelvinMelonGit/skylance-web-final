@@ -36,6 +36,7 @@ jobs:
         file: ./skylance-dashboard/Dockerfile
         push: true
         tags: ${{ secrets.DOCKERHUB_USERNAME }}/skylance-frontend-final:latest
+        platforms: linux/amd64,linux/arm64
         build-args: |
           VITE_API_URL=${{ secrets.VITE_API_URL }}
 
